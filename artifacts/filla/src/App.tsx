@@ -1,8 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, CircleHelp, Home as HomeIcon, Pencil, Plus, RotateCcw, Sparkles, Trash2, Users, WandSparkles } from 'lucide-react';
-
-type Category = 'حيوانات' | 'أكلات' | 'مدن';
+import { ArrowRight, Check, ChevronLeft, CircleHelp, Home as HomeIcon, Pencil, Plus, RotateCcw, Sparkles, Trash2, Users, WandSparkles } from 'lucide-react';
+import Undercover from './Undercover';
 const STORE_KEY = 'filla-players-v1';
 const defaultPlayers: string[] = [];
 
@@ -87,12 +86,6 @@ const challengePool = [
   'احكِ ذكرى جميلة في جملة واحدة.',
 ];
 
-const undercoverWords: Record<Category, string[]> = {
-  'حيوانات': ['زرافة', 'بطريق', 'فيل', 'قطة', 'دلفين', 'سلحفاة', 'ثعلب', 'كنغر', 'بومة', 'حصان', 'نحلة', 'أخطبوط', 'جمل', 'طاووس', 'قرد', 'غزال'],
-  'أكلات': ['مندي', 'كنافة', 'بيتزا', 'مقلوبة', 'فلافل', 'كبسة', 'شاورما', 'معمول', 'محشي', 'فتوش', 'بان كيك', 'آيس كريم', 'سمبوسة', 'مجدرة', 'مكرونة', 'لقيمات'],
-  'مدن': ['الرياض', 'جدة', 'القاهرة', 'بيروت', 'عمّان', 'مراكش', 'دبي', 'إسطنبول', 'الدوحة', 'مسقط', 'تونس', 'القدس', 'الدار البيضاء', 'المنامة', 'المدينة المنورة', 'الإسكندرية'],
-};
-
 function secureIndex(length: number) {
   if (length < 2) return 0;
   const cryptoObject = globalThis.crypto;
@@ -151,7 +144,7 @@ function Header() {
       <Link href="/" className={`nav-link ${path === '/' ? 'active' : ''}`} data-testid="link-nav-home"><HomeIcon size={16} />الرئيسية</Link>
       <Link href="/questions" className={`nav-link ${path === '/questions' ? 'active' : ''}`} data-testid="link-nav-questions"><CircleHelp size={16} />أسئلة</Link>
       <Link href="/challenges" className={`nav-link ${path === '/challenges' ? 'active' : ''}`} data-testid="link-nav-challenges"><Sparkles size={16} />تحديات</Link>
-      <Link href="/undercover" className={`nav-link ${path === '/undercover' ? 'active' : ''}`} data-testid="link-nav-undercover"><Users size={16} />المتخفي</Link>
+      <Link href="/undercover" className={`nav-link ${path === '/undercover' ? 'active' : ''}`} data-testid="link-nav-undercover"><Users size={16} />برا السالفة</Link>
     </nav>
   </header>;
 }
@@ -205,7 +198,7 @@ function Home({ players, setPlayers }: { players: string[]; setPlayers: (players
       <div className="game-grid">
         <Link href="/questions" className="game-card" data-testid="card-game-questions"><ChevronLeft className="game-arrow" size={18} /><span className="game-icon"><CircleHelp size={22} /></span><h3>سؤال على الطاير</h3><p>أسئلة خفيفة وعميقة تفتح سوالف حلوة.</p></Link>
         <Link href="/challenges" className="game-card" data-testid="card-game-challenges"><ChevronLeft className="game-arrow" size={18} /><span className="game-icon"><Sparkles size={22} /></span><h3>تحديات لطيفة</h3><p>حركات وكلمات بسيطة، والضحكة مضمونة.</p></Link>
-        <Link href="/undercover" className="game-card" data-testid="card-game-undercover"><ChevronLeft className="game-arrow" size={18} /><span className="game-icon"><Users size={22} /></span><h3>المتخفي</h3><p>كلمة سرية واحدة، وشخص واحد يحاول يواكب.</p></Link>
+        <Link href="/undercover" className="game-card" data-testid="card-game-undercover"><ChevronLeft className="game-arrow" size={18} /><span className="game-icon"><Users size={22} /></span><h3>برا السالفة</h3><p>كلمة سرية واحدة، وشخص واحد يحاول يواكب.</p></Link>
       </div>
       <div className="game-banner"><span><strong>جاهزين؟</strong> الألعاب تحتاج لاعبين على الأقل.</span><span>{players.length >= 2 ? 'الجلسة جاهزة للانطلاق' : 'أضيفوا لاعباً آخر للبدء'}</span></div>
     </section>
@@ -288,47 +281,6 @@ function Challenges({ players }: { players: string[] }) {
       <div className="game-panel" data-testid="challenges-turn"><div className="panel-label">التحدي {round}</div><div className="player-slot" style={{ height: 61 }}><span className="slot-name" data-testid="challenges-current-player">{player}</span></div>
         {challenge && <><div className="question-card" aria-live="polite" data-testid="challenges-content"><div className="question-category">على راحتك · تحدٍ آمن</div><p className="question-text">{challenge}</p></div><div className="action-row"><button className="btn btn-primary" onClick={() => { setPlayer(''); setChallenge(''); setRound((old) => old + 1); }} data-testid="challenges-button-done"><Check size={16} />تم، التالي</button><button className="btn btn-soft" onClick={nextChallenge} data-testid="challenges-button-another"><RotateCcw size={16} />تحدٍ آخر</button></div><p className="panel-instruction" style={{ margin: '15px 0 0' }}>التحدي الآخر يبقى مع {player}.</p></>}
       </div>}
-  </GameFrame>;
-}
-
-type UndercoverStage = 'choose' | 'reveal' | 'pass' | 'ready' | 'playing';
-function Undercover({ players }: { players: string[] }) {
-  const [stage, setStage] = useState<UndercoverStage>('choose');
-  const [category, setCategory] = useState<Category | null>(null);
-  const [secret, setSecret] = useState('');
-  const [roles, setRoles] = useState<Record<string, boolean>>({});
-  const [index, setIndex] = useState(0);
-  const [shown, setShown] = useState(false);
-
-  function startRound(chosen: Category) {
-    const wordList = undercoverWords[chosen];
-    const word = wordList[secureIndex(wordList.length)];
-    const assignments = players.map((_, i) => i);
-    for (let i = assignments.length - 1; i > 0; i -= 1) { const j = secureIndex(i + 1); [assignments[i], assignments[j]] = [assignments[j], assignments[i]]; }
-    const outsiderCount = 1;
-    const outsiderIndexes = new Set(assignments.slice(0, outsiderCount));
-    const mapping: Record<string, boolean> = {};
-    players.forEach((name, i) => { mapping[`${name}-${i}`] = outsiderIndexes.has(i); });
-    setCategory(chosen); setSecret(word); setRoles(mapping); setIndex(0); setShown(false); setStage('reveal');
-  }
-  function currentIsOutsider() { return roles[`${players[index]}-${index}`] ?? false; }
-  function hideAndPass() {
-    setShown(false);
-    if (index + 1 < players.length) { setIndex((old) => old + 1); setStage('reveal'); }
-    else setStage('ready');
-  }
-  function reset() { setStage('choose'); setCategory(null); setSecret(''); setRoles({}); setIndex(0); setShown(false); }
-
-  return <GameFrame title="المتخفي" subtitle="كلمة واحدة للجميع... إلا لشخص بينهم." number="٣">
-    {players.length < 2 ? <div className="game-panel" data-testid="undercover-needs-players"><div className="game-icon" style={{ margin: '0 auto 16px' }}><Users size={22} /></div><h2 style={{ fontSize: 20 }}>المتخفي يحب المجموعة</h2><p className="secret-muted">تحتاج اللعبة لاعبين على الأقل حتى تبدأ الجولة.</p><Link href="/" className="btn btn-primary" data-testid="undercover-link-add-players"><ArrowRight size={16} />إضافة اللاعبين</Link></div> :
-      <div className="game-panel" data-testid="undercover-panel">
-        {stage === 'choose' && <><div className="panel-label">١ · اختاروا التصنيف</div><p className="panel-instruction" style={{ marginTop: 11 }}>كل اللاعبين سيعرفون كلمة واحدة، ما عدا المتخفي.</p><div className="category-grid">{(['حيوانات', 'أكلات', 'مدن'] as Category[]).map((item, i) => <button className="category-button" key={item} onClick={() => startRound(item)} data-testid={`undercover-category-${i}`}><span className="category-symbol">{['01', '02', '03'][i]}</span>{item}</button>)}</div></>}
-        {stage === 'reveal' && <><div className="step-pips" aria-label={`اللاعب ${index + 1} من ${players.length}`}>{players.map((_, i) => <span key={i} className={`step-pip ${i <= index ? 'on' : ''}`} />)}</div><div className="panel-label">اللاعب {index + 1} من {players.length}</div><h2 style={{ fontSize: 21, margin: '14px 0 7px' }}>مرّروا الهاتف إلى</h2><div className="player-slot" style={{ height: 65, margin: '12px auto' }}><span className="slot-name" data-testid="undercover-current-player">{players[index]}</span></div>{!shown ? <><p className="panel-instruction">تأكدوا أن الشاشة لكم وحدكم قبل الكشف.</p><button className="btn btn-primary" onClick={() => { setShown(true); playTone('tap'); }} data-testid="undercover-button-reveal">أنا {players[index]} · اكشف دوري</button></> : <><div className="secret-box" aria-live="polite" data-testid="undercover-private-role">{currentIsOutsider() ? <><span className="role-pill">أنت المتخفي</span><strong>لا تعرف الكلمة</strong><p className="secret-muted" style={{ margin: '8px 0 0' }}>اسمعوا تلميحات الآخرين وحاولوا تواكبونهم.</p></> : <><span className="role-pill">أنت من المجموعة</span><strong>{secret}</strong><p className="secret-muted" style={{ margin: '8px 0 0' }}>تذكروا الكلمة ولا تكشفوها مباشرة.</p></>}</div><button className="btn btn-soft" onClick={() => { setShown(false); setStage('pass'); }} data-testid="undercover-button-hide">إخفاء وتمرير الهاتف</button></>}</>}
-        {stage === 'pass' && <><div className="step-pips">{players.map((_, i) => <span key={i} className={`step-pip ${i <= index ? 'on' : ''}`} />)}</div><div className="game-icon" style={{ margin: '0 auto 14px' }}><ArrowLeft size={21} /></div><h2 style={{ fontSize: 21 }}>مرّروا الهاتف بأمان</h2><p className="secret-muted">لا تتركوا الشاشة مكشوفة. أعطوا الهاتف للاعب التالي فقط.</p><button className="btn btn-primary" onClick={hideAndPass} data-testid="undercover-button-pass">تم، اللاعب التالي <ArrowLeft size={16} /></button></>}
-        {stage === 'ready' && <><div className="game-icon" style={{ margin: '0 auto 14px' }}><Check size={22} /></div><span className="role-pill">اكتملت التوزيعة</span><h2 style={{ fontSize: 21, margin: '12px 0 8px' }}>الجميع عرف دوره؟</h2><p className="secret-muted">لا تظهر أي كلمة أو أدوار على هذه الشاشة. ابدأوا النقاش وحاولوا اكتشاف المتخفي.</p><button className="btn btn-primary" onClick={() => setStage('playing')} data-testid="undercover-button-start">ابدأوا الجولة <ArrowLeft size={16} /></button></>}
-        {stage === 'playing' && <><div className="game-icon" style={{ margin: '0 auto 14px' }}><Sparkles size={21} /></div><span className="role-pill">الجولة بدأت</span><h2 style={{ fontSize: 24, margin: '15px 0 9px' }}>مين المتخفي؟</h2><p className="secret-muted">تبادلوا التلميحات، استمعوا جيداً، ثم صوّتوا للمشتبه به.</p><div className="action-row" style={{ marginTop: 21 }}><button className="btn btn-primary" onClick={reset} data-testid="undercover-button-replay"><RotateCcw size={16} />جولة جديدة</button><Link href="/" className="btn btn-outline" data-testid="undercover-link-home"><HomeIcon size={16} />للرئيسية</Link></div></>}
-      </div>}
-    <div className="notice" data-testid="undercover-private-notice"><strong>خصوصية الجولة:</strong> الأدوار تظهر للاعب الحالي فقط، وتختفي قبل تمرير الهاتف. لا نعرض الكلمة بعد بدء الجولة.</div>
   </GameFrame>;
 }
 
