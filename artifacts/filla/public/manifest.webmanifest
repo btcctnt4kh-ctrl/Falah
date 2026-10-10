@@ -1,0 +1,14 @@
+{
+  "name": "فِلّة — ألعاب الجلسات",
+  "short_name": "فِلّة",
+  "description": "ألعاب جلسات عربية خفيفة للأصدقاء والعائلة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f8ef",
+  "theme_color": "#79bb62",
+  "icons": [
+    { "src": "/filla-logo.jpeg", "sizes": "any", "type": "image/jpeg", "purpose": "any" }
+  ]
+}

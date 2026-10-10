@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "فِلّة — ألعاب الجلسات"
+description = "تطبيق ويب عربي تفاعلي لألعاب الجلسات الجماعية. يتيح إدارة اللاعبين محليًا ولعب سؤال وجواب والتحديات وبرا السالفة دون حساب أو خادم."
+version = "1.0.0"
+id = "artifacts/filla"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25843
+
+[services.development]
+run = "pnpm --filter @workspace/filla run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/filla", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/filla/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25843"
+BASE_PATH = "/"
