@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CATEGORIES, chooseTieWinner, guessIsCorrect, isOutsider, makeAnswerOptions, makeAskSchedule, makeReplayState, tallyVotes, validRoundState } from './undercover-rules.mjs';
+import { CATEGORIES, chooseTieWinner, guessIsCorrect, hasEnoughUndercoverPlayers, isOutsider, makeAnswerOptions, makeAskSchedule, makeReplayState, MIN_UNDERCOVER_PLAYERS, tallyVotes, undercoverPlayersRequirementMessage, validRoundState } from './undercover-rules.mjs';
+
+test('Undercover requires three players without invalidating the saved roster', () => {
+  assert.equal(MIN_UNDERCOVER_PLAYERS, 3);
+  assert.equal(hasEnoughUndercoverPlayers(2), false);
+  assert.equal(hasEnoughUndercoverPlayers(3), true);
+  assert.equal(hasEnoughUndercoverPlayers(4), true);
+  assert.equal(hasEnoughUndercoverPlayers(2.5), false);
+  assert.equal(undercoverPlayersRequirementMessage(2), 'برا السالفة تحتاج 3 لاعبين على الأقل! أضف لاعبًا ثالثًا وابدأوا اللعب');
+  assert.equal(undercoverPlayersRequirementMessage(3), '');
+  const twoPlayerState = makeReplayState(['ريم', 'سعد']);
+  assert.equal(validRoundState(twoPlayerState, ['ريم', 'سعد']), false);
+});
 
 test('each player asks three times in valid non-self schedule for 3, 4 and 6 players', () => {
   for (const count of [3, 4, 6]) {

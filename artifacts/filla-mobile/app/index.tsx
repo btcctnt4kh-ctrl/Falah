@@ -213,7 +213,11 @@ export default function FillaHome() {
           />
         </View>
         <Notice>
-          {players.length >= 2 ? 'الجلسة جاهزة للانطلاق.' : 'أضيفوا اسمين على الأقل للبدء بألعاب فِلّة.'}
+          {players.length >= 3
+            ? 'الجلسة جاهزة للانطلاق.'
+            : players.length === 2
+              ? 'سؤال وتحديات جاهزة؛ أضيفوا لاعباً ثالثاً لبرا السالفة.'
+              : 'أضيفوا اسمين على الأقل للبدء بألعاب فِلّة.'}
         </Notice>
         {storageError ? <Notice error>{storageError}</Notice> : null}
         <Text style={[styles.footer, { color: colors.mutedForeground }]}>فِلّة · جلسة تجمعكم، وضحكة تبقى معكم</Text>

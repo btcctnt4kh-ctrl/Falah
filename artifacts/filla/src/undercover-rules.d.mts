@@ -1,6 +1,9 @@
 export type UndercoverCategory = 'حيوانات' | 'أكلات' | 'مدن';
 export type Vote = { voter: number; candidate: number };
 export type AskTurn = { asker: number; respondent: number };
+export const MIN_UNDERCOVER_PLAYERS: 3;
+export function hasEnoughUndercoverPlayers(playerCount: number): boolean;
+export function undercoverPlayersRequirementMessage(playerCount: number): string;
 export const CATEGORIES: Record<UndercoverCategory, string[]>;
 export function makeAskSchedule(playerCount: number, random?: () => number): AskTurn[];
 export function tallyVotes(votes: Vote[], eligibleVoters: number[], candidateIndexes: number[]): { counts: Record<number, number>; leaders: number[] };

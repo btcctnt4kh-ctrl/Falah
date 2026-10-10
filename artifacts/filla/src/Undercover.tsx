@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Home as HomeIcon, RotateCcw, Users } from 'lucide-react';
 import { Link } from 'wouter';
-import { CATEGORIES, chooseTieWinner, guessIsCorrect, isOutsider, makeAnswerOptions, makeAskSchedule, makeReplayState, tallyVotes, validRoundState, type UndercoverCategory, type Vote } from './undercover-rules.mjs';
+import { CATEGORIES, chooseTieWinner, guessIsCorrect, hasEnoughUndercoverPlayers, isOutsider, makeAnswerOptions, makeAskSchedule, makeReplayState, tallyVotes, undercoverPlayersRequirementMessage, validRoundState, type UndercoverCategory, type Vote } from './undercover-rules.mjs';
 
 type Stage = 'choose' | 'reveal' | 'pass' | 'ready' | 'asking' | 'ballot-ready' | 'ballot' | 'runoff' | 'ballot-pass' | 'reveal-result' | 'guess-pass' | 'guess' | 'summary';
 type RoundState = {
@@ -80,6 +80,7 @@ export default function Undercover({ players }: { players: string[] }) {
 
   function update(next: Partial<RoundState>) { setGame((old) => ({ ...old, ...next })); }
   function startRound(category: UndercoverCategory) {
+    if (!hasEnoughUndercoverPlayers(players.length)) return;
     const secret = CATEGORIES[category][drawIndex(CATEGORIES[category].length)];
     setGame({
       ...emptyRound(players), stage: 'reveal', category, secret, outsider: drawIndex(players.length),
@@ -129,10 +130,11 @@ export default function Undercover({ players }: { players: string[] }) {
   const currentTurn = game.schedule[game.turn];
   const ballotKind = game.ballotKind ?? 'ballot';
   const ballotChoices = ballotKind === 'runoff' ? game.runoffCandidates : players.map((_, i) => i);
+  const playerRequirementMessage = undercoverPlayersRequirementMessage(players.length);
 
   return <main className="main">
     <div className="game-header"><Link href="/" className="back-link" data-testid="link-back-home"><ArrowRight size={17} />للرئيسية</Link><div className="game-title"><div className="eyebrow">لعبة رقم ٣</div><h1>برا السالفة</h1><p>كلمة واحدة للجميع... إلا لشخص بينهم.</p></div><span style={{ width: 90 }} /></div>
-    {players.length < 2 ? <div className="game-panel" data-testid="undercover-needs-players"><div className="game-icon" style={{ margin: '0 auto 16px' }}><Users size={22} /></div><h2>برا السالفة تحب المجموعة</h2><p className="secret-muted">تحتاج اللعبة لاعبين على الأقل حتى تبدأ الجولة.</p><Link href="/" className="btn btn-primary"><ArrowRight size={16} />إضافة اللاعبين</Link></div> :
+    {!hasEnoughUndercoverPlayers(players.length) ? <div className="game-panel" data-testid="undercover-needs-players"><div className="game-icon" style={{ margin: '0 auto 16px' }}><Users size={22} /></div><h2>نحتاج لاعباً ثالثاً</h2><p className="secret-muted" role="alert" data-testid="undercover-needs-players-message">{playerRequirementMessage}</p><Link href="/" className="btn btn-primary"><ArrowRight size={16} />{players.length === 2 ? 'إضافة لاعب ثالث' : 'إضافة لاعبين'}</Link></div> :
     <div className="game-panel undercover-panel" data-testid="undercover-panel">
       {game.stage === 'choose' && <><div className="panel-label">١ · اختاروا التصنيف</div><p className="panel-instruction" style={{ marginTop: 11 }}>مرّروا الهاتف لكل لاعب، ثم اسألوا بعضكم شفهياً.</p><div className="category-grid">{Object.keys(CATEGORIES).map((category, i) => <button className="category-button" key={category} onClick={() => startRound(category as UndercoverCategory)} data-testid={`undercover-category-${i}`}><span className="category-symbol">{['01', '02', '03'][i]}</span>{category}</button>)}</div></>}
       {game.stage === 'reveal' && <><div className="step-pips">{players.map((_, i) => <span key={i} className={`step-pip ${i <= game.index ? 'on' : ''}`} />)}</div><div className="panel-label">اللاعب {game.index + 1} من {players.length}</div><h2 className="undercover-title">مرّروا الهاتف إلى</h2><div className="player-slot undercover-player-slot"><span className="slot-name" data-testid="undercover-current-player">{players[game.index]}</span></div>{!game.shown ? <><p className="panel-instruction">تأكدوا أن الشاشة لكم وحدكم قبل الكشف.</p><button className="btn btn-primary" onClick={() => update({ shown: true })} data-testid="undercover-button-reveal">أنا {players[game.index]} · اكشف دوري</button></> : <><div className="secret-box" aria-live="polite" data-testid="undercover-private-role">{isOutsider(game.index, game.outsider!) ? <><span className="role-pill">أنت برا السالفة</span><strong>لا تعرف الكلمة</strong><p className="secret-muted">اسمع التلميحات وحاول تواكبهم.</p></> : <><span className="role-pill">أنت من السالفة</span><strong>{game.secret}</strong><p className="secret-muted">تذكّر الكلمة ولا تكشفها مباشرة.</p></>}</div><button className="btn btn-soft" onClick={hideRole} data-testid="undercover-button-hide">إخفاء وتمرير الجوال</button></>}</>}

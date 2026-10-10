@@ -200,7 +200,7 @@ function Home({ players, setPlayers }: { players: string[]; setPlayers: (players
         <Link href="/challenges" className="game-card" data-testid="card-game-challenges"><ChevronLeft className="game-arrow" size={18} /><span className="game-icon"><Sparkles size={22} /></span><h3>تحديات لطيفة</h3><p>حركات وكلمات بسيطة، والضحكة مضمونة.</p></Link>
         <Link href="/undercover" className="game-card" data-testid="card-game-undercover"><ChevronLeft className="game-arrow" size={18} /><span className="game-icon"><Users size={22} /></span><h3>برا السالفة</h3><p>كلمة سرية واحدة، وشخص واحد يحاول يواكب.</p></Link>
       </div>
-      <div className="game-banner"><span><strong>جاهزين؟</strong> الألعاب تحتاج لاعبين على الأقل.</span><span>{players.length >= 2 ? 'الجلسة جاهزة للانطلاق' : 'أضيفوا لاعباً آخر للبدء'}</span></div>
+      <div className="game-banner"><span><strong>جاهزين؟</strong> الألعاب تحتاج لاعبين على الأقل، وبرا السالفة تحتاج ثلاثة.</span><span>{players.length >= 3 ? 'الجلسة جاهزة للانطلاق' : players.length === 2 ? 'سؤال وتحديات جاهزة؛ أضيفوا لاعباً ثالثاً لبرا السالفة' : 'أضيفوا لاعباً آخر للبدء'}</span></div>
     </section>
   </main>;
 }

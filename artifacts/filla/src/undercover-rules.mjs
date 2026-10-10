@@ -1,3 +1,16 @@
+export const MIN_UNDERCOVER_PLAYERS = 3;
+
+export function hasEnoughUndercoverPlayers(playerCount) {
+  return Number.isInteger(playerCount) && playerCount >= MIN_UNDERCOVER_PLAYERS;
+}
+
+export function undercoverPlayersRequirementMessage(playerCount) {
+  if (hasEnoughUndercoverPlayers(playerCount)) return '';
+  if (playerCount === 2) return 'برا السالفة تحتاج 3 لاعبين على الأقل! أضف لاعبًا ثالثًا وابدأوا اللعب';
+  const missing = playerCount === 1 ? 'لاعبين آخرين' : 'ثلاثة لاعبين';
+  return `برا السالفة تحتاج 3 لاعبين على الأقل! أضيفوا ${missing} وابدأوا اللعب`;
+}
+
 export const CATEGORIES = {
   حيوانات: ['زرافة', 'بطريق', 'فيل', 'قطة', 'دلفين', 'سلحفاة', 'ثعلب', 'كنغر', 'بومة', 'حصان', 'نحلة', 'أخطبوط', 'جمل', 'طاووس', 'قرد', 'غزال'],
   أكلات: ['مندي', 'كنافة', 'بيتزا', 'مقلوبة', 'فلافل', 'كبسة', 'شاورما', 'معمول', 'محشي', 'فتوش', 'بان كيك', 'آيس كريم', 'سمبوسة', 'مجدرة', 'مكرونة', 'لقيمات'],
@@ -63,7 +76,7 @@ export function makeAnswerOptions(category, secret, random = Math.random) {
 }
 
 export function validRoundState(value, players) {
-  if (!value || typeof value !== 'object' || !Array.isArray(players) || players.length < 2) return false;
+  if (!value || typeof value !== 'object' || !Array.isArray(players) || !hasEnoughUndercoverPlayers(players.length)) return false;
   const state = value;
   const stages = ['choose', 'reveal', 'pass', 'ready', 'asking', 'ballot-ready', 'ballot', 'runoff', 'ballot-pass', 'reveal-result', 'guess-pass', 'guess', 'summary'];
   if (!stages.includes(state.stage)) return false;

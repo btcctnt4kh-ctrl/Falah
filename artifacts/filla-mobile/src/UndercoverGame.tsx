@@ -7,11 +7,13 @@ import {
   CATEGORIES,
   chooseTieWinner,
   guessIsCorrect,
+  hasEnoughUndercoverPlayers,
   isOutsider,
   makeAnswerOptions,
   makeAskSchedule,
   makeReplayState,
   tallyVotes,
+  undercoverPlayersRequirementMessage,
   validRoundState,
   type AskTurn,
   type UndercoverCategory,
@@ -109,6 +111,7 @@ export default function UndercoverGame({
   }
 
   function startRound(category: UndercoverCategory) {
+    if (!hasEnoughUndercoverPlayers(players.length)) return;
     const words = CATEGORIES[category];
     setRound({
       ...(makeReplayState(players) as RoundState),
@@ -174,18 +177,23 @@ export default function UndercoverGame({
   const currentTurn = round.schedule[round.turn];
   const ballotKind = round.ballotKind ?? 'ballot';
   const ballotChoices = ballotKind === 'runoff' ? round.runoffCandidates : rosterIndexes(players);
+  const playerRequirementMessage = undercoverPlayersRequirementMessage(players.length);
 
   return (
     <PageShell>
       <BrandHeader subtitle="برا السالفة" onBack={onBack} />
       <Title subtitle="كلمة واحدة للجميع... إلا لشخص بينهم.">برا السالفة</Title>
-      {players.length < 2 ? (
+      {!hasEnoughUndercoverPlayers(players.length) ? (
         <Panel>
-          <Label>تحتاج اللعبة إلى لاعبين اثنين على الأقل</Label>
-          <Text style={[styles.body, { color: colors.mutedForeground }]}>
-            أضيفوا أسماء اللاعبين من الصفحة الرئيسية، ثم عودوا لبدء الجولة.
+          <Label>نحتاج لاعباً ثالثاً</Label>
+          <Text
+            style={[styles.body, { color: colors.mutedForeground }]}
+            accessibilityRole="alert"
+            testID="undercover-needs-players-message"
+          >
+            {playerRequirementMessage}
           </Text>
-          <AppButton label="العودة وإضافة اللاعبين" onPress={onBack} testID="undercover-add-players" />
+          <AppButton label={players.length === 2 ? 'إضافة لاعب ثالث' : 'إضافة لاعبين'} onPress={onBack} testID="undercover-add-players" />
         </Panel>
       ) : !ready ? (
         <Panel><Text style={[styles.body, { color: colors.mutedForeground }]}>لحظة ونجهّز الجولة...</Text></Panel>
