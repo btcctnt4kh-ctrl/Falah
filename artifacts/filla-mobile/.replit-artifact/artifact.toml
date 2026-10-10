@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/filla-mobile/"
+title = "فِلّة — ألعاب الجلسات للجوال"
+description = "تطبيق جوال أصلي لفِلّة يحفظ قائمة اللاعبين على الجهاز ويقدّم ألعاب الجلسات العربية باتجاه RTL، مع لعبة برا السالفة وتجربة تمرير الهاتف بين أفراد المجموعة."
+version = "1.0.0"
+id = "artifacts/filla-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/filla-mobile/" ]
+localPort = 24030
+
+[services.development]
+run = "pnpm --filter @workspace/filla-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/filla-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/filla-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "24030"
+BASE_PATH = "/filla-mobile/"

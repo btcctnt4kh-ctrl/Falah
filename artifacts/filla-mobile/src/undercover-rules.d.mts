@@ -1,0 +1,12 @@
+export type UndercoverCategory = 'حيوانات' | 'أكلات' | 'مدن';
+export type Vote = { voter: number; candidate: number };
+export type AskTurn = { asker: number; respondent: number };
+export const CATEGORIES: Record<UndercoverCategory, string[]>;
+export function makeAskSchedule(playerCount: number, random?: () => number): AskTurn[];
+export function tallyVotes(votes: Vote[], eligibleVoters: number[], candidateIndexes: number[]): { counts: Record<number, number>; leaders: number[] };
+export function chooseTieWinner(leaders: number[], random?: () => number): number | null;
+export function isOutsider(playerIndex: number, assignedOutsider: number): boolean;
+export function guessIsCorrect(selected: string, secret: string): boolean;
+export function makeReplayState(players: string[]): { stage: 'choose'; rosterHash: string; index: 0; shown: false; schedule: AskTurn[]; turn: 0; votes: Vote[]; runoffCandidates: number[] };
+export function makeAnswerOptions(category: UndercoverCategory, secret: string, random?: () => number): string[];
+export function validRoundState(value: unknown, players: string[]): boolean;
