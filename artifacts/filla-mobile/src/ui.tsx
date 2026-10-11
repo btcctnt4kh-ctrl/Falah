@@ -24,6 +24,7 @@ type SoundContextValue = {
   play: (kind?: 'tap' | 'tick' | 'land') => void;
 };
 const SoundContext = createContext<SoundContextValue>({ enabled: false, toggle: () => undefined, play: () => undefined });
+let webAudioContext: AudioContext | null = null;
 
 export function SoundProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
@@ -49,6 +50,30 @@ export function SoundProvider({ children }: { children: ReactNode }) {
 
   function play(kind: 'tap' | 'tick' | 'land' = 'tap') {
     if (!enabled) return;
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window === 'undefined') return;
+        const AudioContextClass = window.AudioContext
+          ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioContextClass) return;
+        webAudioContext ??= new AudioContextClass();
+        if (webAudioContext.state === 'suspended') void webAudioContext.resume().catch(() => undefined);
+        const oscillator = webAudioContext.createOscillator();
+        const gain = webAudioContext.createGain();
+        const now = webAudioContext.currentTime;
+        oscillator.frequency.setValueAtTime(kind === 'land' ? 740 : kind === 'tick' ? 500 : 590, now);
+        oscillator.type = 'sine';
+        gain.gain.setValueAtTime(kind === 'tick' ? 0.035 : 0.055, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (kind === 'land' ? 0.18 : 0.07));
+        oscillator.connect(gain);
+        gain.connect(webAudioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + (kind === 'land' ? 0.19 : 0.08));
+      } catch {
+        // Web audio and sound permissions are optional.
+      }
+      return;
+    }
     const player = kind === 'tick' ? tick : kind === 'land' ? land : tap;
     try {
       void player.seekTo(0).then(() => player.play()).catch(() => undefined);

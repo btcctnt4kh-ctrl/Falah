@@ -185,43 +185,47 @@ h1,h2,h3,p { margin-top:0; }
 
 @media (max-width:700px) {
   .page { width:min(100% - 24px,520px);padding-bottom:18px; }
+  .main:not(.game-screen) { padding-top:8px; }
   .topbar { height:64px;gap:8px; }
   .brand img { width:43px;height:43px; }
   .brand-caption { display:none!important; }
   .nav-links { gap:2px; }
   .nav-link { width:38px;height:38px;justify-content:center;border-radius:12px; }
-  .hero { grid-template-columns:1fr auto;gap:10px;padding:5px 0 13px; }
-  .hero-art { grid-row:auto;width:106px;min-height:106px;border-radius:35px; }
+  .hero { grid-template-columns:1fr;gap:0;padding:0 0 8px; }
+  .hero .eyebrow,.hero-copy,.hero-art { display:none; }
   .hero-art:before { width:83px;height:83px; }.hero-art:after { width:98px;height:98px; }
   .art-logo { width:58px;height:58px;border-radius:18px; }
   .spark { width:26px;height:26px;border-radius:9px; }.spark svg { width:13px;height:13px; }
   .spark.one { top:8px;right:9%; }.spark.two { bottom:8px;left:9%; }.spark.three { width:16px;height:16px;right:5%;bottom:18px; }
-  .hero h1 { font-size:clamp(29px,8.5vw,39px);line-height:1.16; }
-  .hero-copy { font-size:11px;line-height:1.65;max-width:290px; }
-  .section-heading { margin:8px 0 9px; }
+  .hero h1 { font-size:clamp(28px,7.2vw,32px);line-height:1.14;margin:0; }
+  .section-heading { margin:7px 0 8px; }
   .section-heading h2 { font-size:18px; }
-  .section-heading p { font-size:10px;margin-top:3px; }
-  .roster-card { padding:12px;border-radius:18px; }
+  .section-heading p { display:none; }
+  .roster-card { padding:10px;border-radius:16px; }
   .roster-top strong { font-size:12px!important; }
   .roster-count { font-size:10px; }
+  .roster-top { margin-bottom:6px; }
   .roster-list { grid-template-columns:1fr 1fr;gap:6px;max-height:124px; }
   .player-row { gap:6px;min-height:46px;padding:5px;border-radius:13px; }
   .player-avatar { width:29px;height:29px;border-radius:10px;font-size:12px; }
   .player-name { font-size:11px; }
   .icon-button { width:27px;height:29px; }
   .icon-button svg { width:14px;height:14px; }
-  .add-row { gap:7px;margin-top:8px; }
+  .secret-box { margin:8px auto;padding:12px 10px;border-radius:14px; }
+  .secret-box strong { font-size:16px!important;margin-top:0; }
+  .secret-muted { font-size:11px;line-height:1.45; }
+  .add-row { gap:7px;margin-top:7px; }
   .field { height:41px;padding:0 10px;font-size:12px; }
   .add-row .btn { padding:10px 12px; }
-  .game-grid { grid-template-columns:1fr;gap:7px;margin-top:9px; }
-  .game-card { min-height:76px;padding:10px 56px 9px 12px;border-radius:15px; }
+  .game-grid { grid-template-columns:1fr;gap:6px;margin-top:7px; }
+  .game-card { min-height:70px;padding:8px 56px 7px 12px;border-radius:15px; }
   .game-icon { left:auto;right:10px;top:16px;width:35px;height:35px;border-radius:12px; }
   .game-icon svg { width:19px;height:19px; }
   .game-card h3 { margin:1px 0 3px;font-size:13px; }
   .game-card p { font-size:10px;line-height:1.45; }
   .game-arrow { left:10px;top:12px;width:15px;height:15px; }
-  .game-banner { margin-top:9px;padding:9px 11px;font-size:9px; }
-  .footer-note { margin-top:12px; }
+  .game-banner { margin-top:7px;padding:8px 10px;font-size:9px; }
+  .footer-note { display:none; }
   .game-header { padding:2px 0 10px;gap:4px; }
   .game-header > span { width:38px!important; }
   .back-link { font-size:10px;padding:8px 7px;gap:4px;white-space:nowrap; }
