@@ -1,4 +1,5 @@
-import React, { type ReactNode } from 'react';
+import React, { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Image,
   Platform,
@@ -8,11 +9,60 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useAudioPlayer } from 'expo-audio';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 
 const logo = require('../assets/images/icon.png');
+const soundKey = 'filla-mobile-sound-enabled-v1';
+
+type SoundContextValue = {
+  enabled: boolean;
+  toggle: () => void;
+  play: (kind?: 'tap' | 'tick' | 'land') => void;
+};
+const SoundContext = createContext<SoundContextValue>({ enabled: false, toggle: () => undefined, play: () => undefined });
+
+export function SoundProvider({ children }: { children: ReactNode }) {
+  const [enabled, setEnabled] = useState(false);
+  const tick = useAudioPlayer(require('../assets/sounds/tick.wav'));
+  const tap = useAudioPlayer(require('../assets/sounds/tap.wav'));
+  const land = useAudioPlayer(require('../assets/sounds/land.wav'));
+
+  useEffect(() => {
+    let active = true;
+    void AsyncStorage.getItem(soundKey).then((saved) => {
+      if (active) setEnabled(saved === 'on');
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  function toggle() {
+    setEnabled((current) => {
+      const next = !current;
+      void AsyncStorage.setItem(soundKey, next ? 'on' : 'off').catch(() => undefined);
+      return next;
+    });
+  }
+
+  function play(kind: 'tap' | 'tick' | 'land' = 'tap') {
+    if (!enabled) return;
+    const player = kind === 'tick' ? tick : kind === 'land' ? land : tap;
+    try {
+      void player.seekTo(0).then(() => player.play()).catch(() => undefined);
+    } catch {
+      // Sound effects are optional and must never interrupt a game.
+    }
+  }
+
+  return <SoundContext.Provider value={{ enabled, toggle, play }}>{children}</SoundContext.Provider>;
+}
+
+export function useSoundEffects() {
+  return useContext(SoundContext);
+}
 
 export function PageShell({
   children,
@@ -24,11 +74,14 @@ export function PageShell({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const content = {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingTop: insets.top + (Platform.OS === 'web' ? 67 : 12),
-    paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 24),
-    gap: 18,
+    paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 18),
+    gap: 15,
     flexGrow: 1,
+    width: '100%' as const,
+    maxWidth: 720,
+    alignSelf: 'center' as const,
     direction: 'rtl' as const,
   };
   if (!scroll) {
@@ -58,6 +111,7 @@ export function BrandHeader({
   onBack?: () => void;
 }) {
   const colors = useColors();
+  const { enabled: soundEnabled, toggle: toggleSound } = useSoundEffects();
   return (
     <View style={styles.header}>
       {onBack ? (
@@ -82,7 +136,16 @@ export function BrandHeader({
           </Text>
         </View>
       </View>
-      <View style={styles.backSpacer} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={soundEnabled ? 'إيقاف الأصوات' : 'تشغيل الأصوات'}
+        accessibilityState={{ checked: soundEnabled }}
+        onPress={toggleSound}
+        testID="button-toggle-sound"
+        style={({ pressed }) => [styles.soundButton, pressed && styles.pressed]}
+      >
+        <Feather name={soundEnabled ? 'volume-2' : 'volume-x'} size={18} color={soundEnabled ? colors.primary : colors.mutedForeground} />
+      </Pressable>
     </View>
   );
 }
@@ -103,6 +166,7 @@ export function AppButton({
   accessibilityLabel?: string;
 }) {
   const colors = useColors();
+  const { play } = useSoundEffects();
   const palette = {
     primary: { backgroundColor: colors.primary, color: colors.primaryForeground, borderColor: colors.primary },
     soft: { backgroundColor: colors.secondary, color: colors.secondaryForeground, borderColor: colors.secondary },
@@ -115,7 +179,8 @@ export function AppButton({
       accessibilityLabel={accessibilityLabel ?? label}
       disabled={disabled}
       onPress={() => {
-        void Haptics.selectionAsync();
+        play('tap');
+        void Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
       testID={testID}
@@ -192,6 +257,7 @@ const styles = StyleSheet.create({
   backButton: { minWidth: 72, minHeight: 44, justifyContent: 'center' },
   backText: { fontFamily: 'Alexandria_600SemiBold', fontSize: 12 },
   backSpacer: { width: 72 },
+  soundButton: { width: 44, height: 44, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandIcon: { width: 48, height: 48, borderRadius: 16 },
   brandName: { fontFamily: 'Alexandria_800ExtraBold', fontSize: 20, textAlign: 'right' },
@@ -200,9 +266,9 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'Alexandria_700Bold', fontSize: 22, textAlign: 'right', lineHeight: 34 },
   subtitle: { fontFamily: 'Alexandria_400Regular', fontSize: 12, textAlign: 'right', lineHeight: 23 },
   label: { fontFamily: 'Alexandria_700Bold', fontSize: 11, textAlign: 'right' },
-  panel: { borderWidth: 1, padding: 18, gap: 14, shadowOpacity: 0.06, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 2 },
-  button: { minHeight: 48, paddingHorizontal: 17, paddingVertical: 12, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  buttonText: { fontFamily: 'Alexandria_600SemiBold', fontSize: 12, textAlign: 'center' },
+  panel: { borderWidth: 1, padding: 18, gap: 14, shadowOpacity: 0.045, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 2 },
+  button: { minHeight: 50, paddingHorizontal: 17, paddingVertical: 12, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  buttonText: { fontFamily: 'Alexandria_600SemiBold', fontSize: 13, textAlign: 'center' },
   pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
   disabled: { opacity: 0.48 },
   notice: { fontFamily: 'Alexandria_400Regular', fontSize: 11, lineHeight: 22, paddingVertical: 11, paddingHorizontal: 13, borderRadius: 14, textAlign: 'right', overflow: 'hidden' },

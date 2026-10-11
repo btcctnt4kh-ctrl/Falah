@@ -81,17 +81,21 @@ export default function FillaHome() {
       <PageShell>
         <BrandHeader />
         <View style={[styles.hero, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-          <Image source={require('../assets/images/icon.png')} style={styles.heroIcon} accessibilityLabel="شعار فِلّة" />
-          <Label>مساحة صغيرة لضحكة كبيرة</Label>
-          <Text style={[styles.heroTitle, { color: colors.foreground }]}>اللعب أحلى{'\n'}لما نكون فِلّة.</Text>
+          <View style={styles.heroTop}>
+            <View>
+              <Label>وقتكم سوا، على طريقتكم</Label>
+              <Text style={[styles.heroTitle, { color: colors.foreground }]}>اللعب أحلى{'\n'}لما نكون فِلّة.</Text>
+            </View>
+            <Image source={require('../assets/images/icon.png')} style={styles.heroIcon} accessibilityLabel="شعار فِلّة" />
+          </View>
           <Text style={[styles.body, { color: colors.mutedForeground }]}>
-            جهّزوا الجلسة، اختاروا اللعبة، وخلو الباقي علينا.
+            اختاروا لعبة ومرّروا الجوال. الباقي علينا.
           </Text>
         </View>
 
         <View style={styles.sectionHeader}>
           <View style={styles.sectionText}>
-            <Title subtitle="الأسماء محفوظة على هذا الجهاز.">مين معنا اليوم؟</Title>
+            <Title subtitle="قائمة محلية تبقى على هذا الجهاز.">مين معنا اليوم؟</Title>
           </View>
           <View style={[styles.countBadge, { backgroundColor: colors.secondary }]}>
             <Text style={[styles.countText, { color: colors.primary }]}>{players.length}</Text>
@@ -181,7 +185,7 @@ export default function FillaHome() {
         </Panel>
 
         <View style={styles.gamesHeading}>
-          <Title subtitle="ثلاث طرق مختلفة لصناعة جلسة ما تنسى.">اختاروا لعبتكم</Title>
+          <Title subtitle="ثلاث ألعاب، وجوال واحد بينكم.">اختاروا لعبتكم</Title>
         </View>
         <View style={styles.gamesGrid}>
           <GameCard
@@ -189,7 +193,7 @@ export default function FillaHome() {
             description="أسئلة خفيفة وعميقة تفتح سوالف حلوة."
             icon="message-circle"
             onPress={() => setScreen('questions')}
-            color={colors.primary}
+             color={colors.primary}
             background={colors.secondary}
             testID="card-game-questions"
           />
@@ -267,6 +271,7 @@ function GameCard({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${title}. ${description}`}
       onPress={onPress}
       testID={testID}
       style={({ pressed }) => [
@@ -278,8 +283,10 @@ function GameCard({
       <View style={[styles.gameIcon, { backgroundColor: background }]}>
         <Feather name={icon} size={20} color={color} />
       </View>
-      <Text style={[styles.gameTitle, { color: colors.foreground }]}>{title}</Text>
+      <View style={styles.gameCopy}>
+        <Text style={[styles.gameTitle, { color: colors.foreground }]}>{title}</Text>
       <Text style={[styles.gameDescription, { color: colors.mutedForeground }]}>{description}</Text>
+      </View>
       <Feather name="arrow-left" size={16} color={colors.mutedForeground} style={styles.gameArrow} />
     </Pressable>
   );
@@ -287,10 +294,11 @@ function GameCard({
 
 const styles = StyleSheet.create({
   keyboardWrapper: { flex: 1 },
-  hero: { borderWidth: 1, borderRadius: 28, padding: 22, gap: 12, overflow: 'hidden' },
-  heroIcon: { width: 65, height: 65, borderRadius: 23, alignSelf: 'flex-end', marginBottom: 3 },
-  heroTitle: { fontFamily: 'Alexandria_800ExtraBold', fontSize: 29, textAlign: 'right', lineHeight: 44 },
-  body: { fontFamily: 'Alexandria_400Regular', fontSize: 12, textAlign: 'right', lineHeight: 24 },
+  hero: { borderWidth: 1, borderRadius: 28, padding: 20, gap: 8, overflow: 'hidden' },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  heroIcon: { width: 66, height: 66, borderRadius: 22 },
+  heroTitle: { fontFamily: 'Alexandria_800ExtraBold', fontSize: 26, textAlign: 'right', lineHeight: 40, marginTop: 9 },
+  body: { fontFamily: 'Alexandria_400Regular', fontSize: 12, textAlign: 'right', lineHeight: 23 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 },
   sectionText: { flex: 1 },
   countBadge: { minWidth: 40, height: 40, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
@@ -300,7 +308,7 @@ const styles = StyleSheet.create({
   empty: { minHeight: 120, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 7, padding: 15 },
   emptyTitle: { fontFamily: 'Alexandria_600SemiBold', fontSize: 13 },
   playerList: { gap: 8 },
-  playerRow: { minHeight: 58, borderWidth: 1, borderRadius: 16, paddingHorizontal: 9, flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  playerRow: { minHeight: 58, borderWidth: 1, borderRadius: 17, paddingHorizontal: 9, flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   avatar: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontFamily: 'Alexandria_700Bold', fontSize: 14 },
   playerText: { flex: 1, fontFamily: 'Alexandria_600SemiBold', fontSize: 12, textAlign: 'right' },
@@ -309,12 +317,13 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   newNameInput: { minWidth: 0 },
   gamesHeading: { marginTop: 7 },
-  gamesGrid: { gap: 10 },
-  gameCard: { minHeight: 128, borderWidth: 1, borderRadius: 21, padding: 16, gap: 8, overflow: 'hidden' },
-  gameIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
-  gameTitle: { fontFamily: 'Alexandria_700Bold', fontSize: 14, textAlign: 'right', paddingLeft: 26 },
-  gameDescription: { fontFamily: 'Alexandria_400Regular', fontSize: 10, lineHeight: 20, textAlign: 'right', paddingLeft: 20 },
-  gameArrow: { position: 'absolute', left: 16, top: 19 },
+  gamesGrid: { gap: 9 },
+  gameCard: { minHeight: 91, borderWidth: 1, borderRadius: 21, paddingHorizontal: 13, paddingVertical: 12, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  gameIcon: { width: 50, height: 50, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  gameCopy: { flex: 1, gap: 4 },
+  gameTitle: { fontFamily: 'Alexandria_700Bold', fontSize: 13, textAlign: 'right' },
+  gameDescription: { fontFamily: 'Alexandria_400Regular', fontSize: 10, lineHeight: 17, textAlign: 'right' },
+  gameArrow: { marginLeft: 1 },
   footer: { fontFamily: 'Alexandria_400Regular', fontSize: 9, textAlign: 'center', marginTop: 4 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },

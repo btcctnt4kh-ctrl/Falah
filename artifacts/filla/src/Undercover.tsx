@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Home as HomeIcon, RotateCcw, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Cat, Check, Home as HomeIcon, MapPin, RotateCcw, Utensils, Users, type LucideIcon } from 'lucide-react';
 import { Link } from 'wouter';
+import { playTone } from './feedback';
 import { CATEGORIES, chooseTieWinner, guessIsCorrect, hasEnoughUndercoverPlayers, isOutsider, makeAnswerOptions, makeAskSchedule, makeReplayState, tallyVotes, undercoverPlayersRequirementMessage, validRoundState, type UndercoverCategory, type Vote } from './undercover-rules.mjs';
 
 type Stage = 'choose' | 'reveal' | 'pass' | 'ready' | 'asking' | 'ballot-ready' | 'ballot' | 'runoff' | 'ballot-pass' | 'reveal-result' | 'guess-pass' | 'guess' | 'summary';
@@ -46,7 +47,7 @@ function drawIndex(length: number) {
   return Math.floor(Math.random() * length);
 }
 
-export default function Undercover({ players }: { players: string[] }) {
+export default function Undercover({ players, soundEnabled = false }: { players: string[]; soundEnabled?: boolean }) {
   const [game, setGame] = useState<RoundState>(() => loadRound(players));
   const [rollingName, setRollingName] = useState('');
   const [landed, setLanded] = useState(false);
@@ -78,10 +79,17 @@ export default function Undercover({ players }: { players: string[] }) {
     return () => window.clearTimeout(timer);
   }, [game.stage, game.outsider, players]);
 
-  function update(next: Partial<RoundState>) { setGame((old) => ({ ...old, ...next })); }
+  function update(next: Partial<RoundState>) {
+    if (next.stage && next.stage !== game.stage) {
+      playTone('tap', soundEnabled);
+      if ('vibrate' in navigator) navigator.vibrate?.(10);
+    }
+    setGame((old) => ({ ...old, ...next }));
+  }
   function startRound(category: UndercoverCategory) {
     if (!hasEnoughUndercoverPlayers(players.length)) return;
     const secret = CATEGORIES[category][drawIndex(CATEGORIES[category].length)];
+    playTone('tap', soundEnabled);
     setGame({
       ...emptyRound(players), stage: 'reveal', category, secret, outsider: drawIndex(players.length),
       schedule: makeAskSchedule(players.length, Math.random), index: 0, turn: 0,
@@ -131,12 +139,25 @@ export default function Undercover({ players }: { players: string[] }) {
   const ballotKind = game.ballotKind ?? 'ballot';
   const ballotChoices = ballotKind === 'runoff' ? game.runoffCandidates : players.map((_, i) => i);
   const playerRequirementMessage = undercoverPlayersRequirementMessage(players.length);
+  const progressIndex = game.stage === 'choose' ? 0
+    : ['reveal', 'pass'].includes(game.stage) ? 1
+      : ['ready', 'asking'].includes(game.stage) ? 2
+        : ['ballot-ready', 'ballot', 'runoff', 'ballot-pass'].includes(game.stage) ? 3 : 4;
+  const progressLabels = ['الفئة', 'الأدوار', 'الأسئلة', 'التصويت', 'الكشف'];
 
-  return <main className="main">
-    <div className="game-header"><Link href="/" className="back-link" data-testid="link-back-home"><ArrowRight size={17} />للرئيسية</Link><div className="game-title"><div className="eyebrow">لعبة رقم ٣</div><h1>برا السالفة</h1><p>كلمة واحدة للجميع... إلا لشخص بينهم.</p></div><span style={{ width: 90 }} /></div>
+  return <main className="main game-screen undercover-screen" data-testid="undercover-screen">
+    <div className="game-header"><Link href="/" className="back-link" data-testid="link-back-home"><ArrowRight size={17} />للرئيسية</Link><div className="game-title"><div className="eyebrow">لعبة رقم ٣</div><h1>برا السالفة</h1><p>كلمة واحدة للجميع... إلا لشخص بينهم.</p></div><span className="header-spacer" /></div>
+    <div className="stage-progress" aria-label={`المرحلة ${progressIndex + 1} من ${progressLabels.length}`} data-testid="undercover-stage-progress">
+      {progressLabels.map((label, index) => <div className={`stage-progress-item ${index < progressIndex ? 'done' : ''} ${index === progressIndex ? 'active' : ''}`} key={label} aria-current={index === progressIndex ? 'step' : undefined}>
+        <span className="stage-progress-dot">{index < progressIndex ? <Check size={12} /> : index + 1}</span><span>{label}</span>
+      </div>)}
+    </div>
     {!hasEnoughUndercoverPlayers(players.length) ? <div className="game-panel" data-testid="undercover-needs-players"><div className="game-icon" style={{ margin: '0 auto 16px' }}><Users size={22} /></div><h2>نحتاج لاعباً ثالثاً</h2><p className="secret-muted" role="alert" data-testid="undercover-needs-players-message">{playerRequirementMessage}</p><Link href="/" className="btn btn-primary"><ArrowRight size={16} />{players.length === 2 ? 'إضافة لاعب ثالث' : 'إضافة لاعبين'}</Link></div> :
-    <div className="game-panel undercover-panel" data-testid="undercover-panel">
-      {game.stage === 'choose' && <><div className="panel-label">١ · اختاروا التصنيف</div><p className="panel-instruction" style={{ marginTop: 11 }}>مرّروا الهاتف لكل لاعب، ثم اسألوا بعضكم شفهياً.</p><div className="category-grid">{Object.keys(CATEGORIES).map((category, i) => <button className="category-button" key={category} onClick={() => startRound(category as UndercoverCategory)} data-testid={`undercover-category-${i}`}><span className="category-symbol">{['01', '02', '03'][i]}</span>{category}</button>)}</div></>}
+    <div key={game.stage} className={`game-panel game-stage-card undercover-panel stage-${game.stage}`} data-testid="undercover-panel">
+      {game.stage === 'choose' && <><div className="game-stage-top"><div className="panel-label">١ · اختاروا التصنيف</div><p className="panel-instruction">مرّروا الهاتف لكل لاعب، ثم اسألوا بعضكم شفهياً.</p></div><div className="category-grid">{(Object.keys(CATEGORIES) as UndercoverCategory[]).map((category, i) => {
+        const CategoryIcon: LucideIcon = category === 'حيوانات' ? Cat : category === 'أكلات' ? Utensils : MapPin;
+        return <button className="category-button" key={category} onClick={() => startRound(category)} data-testid={`undercover-category-${i}`}><span className="category-symbol"><CategoryIcon size={22} /></span><span>{category}</span><ArrowLeft className="category-arrow" size={16} /></button>;
+      })}</div></>}
       {game.stage === 'reveal' && <><div className="step-pips">{players.map((_, i) => <span key={i} className={`step-pip ${i <= game.index ? 'on' : ''}`} />)}</div><div className="panel-label">اللاعب {game.index + 1} من {players.length}</div><h2 className="undercover-title">مرّروا الهاتف إلى</h2><div className="player-slot undercover-player-slot"><span className="slot-name" data-testid="undercover-current-player">{players[game.index]}</span></div>{!game.shown ? <><p className="panel-instruction">تأكدوا أن الشاشة لكم وحدكم قبل الكشف.</p><button className="btn btn-primary" onClick={() => update({ shown: true })} data-testid="undercover-button-reveal">أنا {players[game.index]} · اكشف دوري</button></> : <><div className="secret-box" aria-live="polite" data-testid="undercover-private-role">{isOutsider(game.index, game.outsider!) ? <><span className="role-pill">أنت برا السالفة</span><strong>لا تعرف الكلمة</strong><p className="secret-muted">اسمع التلميحات وحاول تواكبهم.</p></> : <><span className="role-pill">أنت من السالفة</span><strong>{game.secret}</strong><p className="secret-muted">تذكّر الكلمة ولا تكشفها مباشرة.</p></>}</div><button className="btn btn-soft" onClick={hideRole} data-testid="undercover-button-hide">إخفاء وتمرير الجوال</button></>}</>}
       {game.stage === 'pass' && <><div className="game-icon" style={{ margin: '0 auto 14px' }}><ArrowLeft size={21} /></div><h2 className="undercover-title">مرّروا الجوال بأمان</h2><p className="secret-muted">أعطوا الهاتف للاعب التالي فقط، من دون كشف الشاشة.</p><button className="btn btn-primary" onClick={passRole} data-testid="undercover-button-pass">تم، التالي <ArrowLeft size={16} /></button></>}
       {game.stage === 'ready' && <><div className="game-icon" style={{ margin: '0 auto 14px' }}><Check size={22} /></div><span className="role-pill">اكتملت التوزيعة</span><h2 className="undercover-title">وقت الأسئلة</h2><p className="secret-muted">تبادلوا الأسئلة شفهياً. كل لاعب يسأل ثلاث مرات، ولا يظهر هنا أي دور أو كلمة.</p><button className="btn btn-primary" onClick={() => update({ stage: 'asking', turn: 0 })} data-testid="undercover-button-start">ابدأوا الأسئلة <ArrowLeft size={16} /></button></>}

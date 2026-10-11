@@ -15,6 +15,7 @@ import {
 } from '@expo-google-fonts/alexandria';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SoundProvider } from '@/src/ui';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -53,7 +54,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView>
             <KeyboardProvider>
-              <RootLayoutNav />
+              <SoundProvider>
+                <RootLayoutNav />
+              </SoundProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StyleSheet, Text, View } from 'react-native';
-import { AppButton, BrandHeader, Label, Notice, PageShell, Panel, Title } from '@/src/ui';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { AppButton, BrandHeader, Label, Notice, PageShell, Panel, Title, useSoundEffects } from '@/src/ui';
 import { useColors } from '@/hooks/useColors';
 import {
   CATEGORIES,
@@ -54,6 +56,7 @@ export default function UndercoverGame({
   onBack: () => void;
 }) {
   const colors = useColors();
+  const { play } = useSoundEffects();
   const [round, setRound] = useState<RoundState>(() => makeReplayState(players) as RoundState);
   const [ready, setReady] = useState(false);
   const [voteError, setVoteError] = useState('');
@@ -113,6 +116,8 @@ export default function UndercoverGame({
   function startRound(category: UndercoverCategory) {
     if (!hasEnoughUndercoverPlayers(players.length)) return;
     const words = CATEGORIES[category];
+    play('tap');
+    void Haptics.selectionAsync().catch(() => undefined);
     setRound({
       ...(makeReplayState(players) as RoundState),
       stage: 'reveal',
@@ -178,6 +183,18 @@ export default function UndercoverGame({
   const ballotKind = round.ballotKind ?? 'ballot';
   const ballotChoices = ballotKind === 'runoff' ? round.runoffCandidates : rosterIndexes(players);
   const playerRequirementMessage = undercoverPlayersRequirementMessage(players.length);
+  const phaseIndex = round.stage === 'choose' ? 0
+    : ['reveal', 'pass'].includes(round.stage) ? 1
+      : round.stage === 'ready' ? 2
+        : round.stage === 'asking' ? 3
+          : ['ballot-ready', 'ballot', 'runoff', 'ballot-pass'].includes(round.stage) ? 4
+            : round.stage === 'reveal-result' ? 5
+              : ['guess-pass', 'guess'].includes(round.stage) ? 6 : 7;
+  const categoryIcons: Record<UndercoverCategory, React.ComponentProps<typeof Feather>['name']> = {
+    حيوانات: 'feather',
+    أكلات: 'coffee',
+    مدن: 'map-pin',
+  };
 
   return (
     <PageShell>
@@ -199,21 +216,39 @@ export default function UndercoverGame({
         <Panel><Text style={[styles.body, { color: colors.mutedForeground }]}>لحظة ونجهّز الجولة...</Text></Panel>
       ) : (
         <Panel>
+          {round.stage !== 'summary' ? <PhaseProgress active={phaseIndex} colors={colors} /> : null}
           {round.stage === 'choose' && (
             <>
               <Label>١ · اختاروا التصنيف</Label>
+              <Text style={[styles.heading, { color: colors.foreground }]}>من وين نبدأ؟</Text>
               <Text style={[styles.body, { color: colors.mutedForeground }]}>
                 مرّروا الهاتف لكل لاعب، ثم اسألوا بعضكم شفهياً.
               </Text>
               <View style={styles.choiceGrid}>
                 {(Object.keys(CATEGORIES) as UndercoverCategory[]).map((category, index) => (
-                  <AppButton
+                  <Pressable
                     key={category}
-                    label={`${['٠١', '٠٢', '٠٣'][index]}  ${category}`}
                     onPress={() => startRound(category)}
-                    variant="soft"
                     testID={`undercover-category-${index}`}
-                  />
+                    accessibilityRole="button"
+                    accessibilityLabel={`اختيار تصنيف ${category}`}
+                    style={({ pressed }) => [
+                      styles.categoryCard,
+                      { backgroundColor: pressed ? colors.secondary : colors.card, borderColor: pressed ? colors.primary : colors.border },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={[styles.categoryIcon, { backgroundColor: colors.secondary }]}>
+                      <Feather name={categoryIcons[category]} size={21} color={colors.primary} />
+                    </View>
+                    <View style={styles.categoryCopy}>
+                      <Text style={[styles.categoryTitle, { color: colors.foreground }]}>{category}</Text>
+                      <Text style={[styles.categorySub, { color: colors.mutedForeground }]}>
+                        {index === 0 ? 'عالم من الكائنات' : index === 1 ? 'أشياء نحبها على المائدة' : 'أماكن نعرفها ونحلم بها'}
+                      </Text>
+                    </View>
+                    <Feather name="arrow-left" size={17} color={colors.mutedForeground} />
+                  </Pressable>
                 ))}
               </View>
             </>
@@ -221,13 +256,9 @@ export default function UndercoverGame({
 
           {round.stage === 'reveal' && (
             <>
-              <View style={styles.progressRow}>
-                {players.map((player, index) => (
-                  <View
-                    key={`${player}-${index}`}
-                    style={[styles.progressDot, { backgroundColor: index <= round.index ? colors.primary : colors.border }]}
-                  />
-                ))}
+              <View style={styles.playerProgress} accessibilityLabel={`اللاعب ${round.index + 1} من ${players.length}`}>
+                <View style={styles.progressLabels}><Text style={[styles.small, { color: colors.mutedForeground }]}>توزيع الأدوار</Text><Text style={[styles.small, { color: colors.primary }]}>{round.index + 1} / {players.length}</Text></View>
+                <View style={[styles.track, { backgroundColor: colors.border }]}><View style={[styles.trackFill, { backgroundColor: colors.primary, width: `${((round.index + 1) / players.length) * 100}%` }]} /></View>
               </View>
               <Label>اللاعب {round.index + 1} من {players.length}</Label>
               <Text style={[styles.heading, { color: colors.foreground }]}>مرّروا الهاتف إلى</Text>
@@ -245,7 +276,7 @@ export default function UndercoverGame({
                 </>
               ) : (
                 <>
-                  <View style={[styles.secretBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                  <View testID="undercover-private-role" style={[styles.secretBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
                     <Label>{isOutsider(round.index, round.outsider!) ? 'أنت برا السالفة' : 'أنت من السالفة'}</Label>
                     <Text style={[styles.secret, { color: colors.foreground }]}>
                       {isOutsider(round.index, round.outsider!) ? 'لا تعرف الكلمة' : round.secret}
@@ -427,11 +458,44 @@ const styles = StyleSheet.create({
   arrow: { fontFamily: 'Alexandria_700Bold', fontSize: 20 },
   secret: { fontFamily: 'Alexandria_700Bold', fontSize: 24, textAlign: 'center', marginTop: 9 },
   bold: { fontFamily: 'Alexandria_700Bold' },
-  choiceGrid: { gap: 9 },
+  choiceGrid: { gap: 10 },
+  phaseWrap: { gap: 7, paddingBottom: 5 },
+  phaseTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  phaseName: { fontFamily: 'Alexandria_600SemiBold', fontSize: 10 },
+  phaseTrack: { flexDirection: 'row-reverse', gap: 4, height: 5 },
+  phaseSegment: { flex: 1, height: 5, borderRadius: 8 },
+  categoryCard: { minHeight: 88, borderWidth: 1, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 12, flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  categoryIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  categoryCopy: { flex: 1, gap: 5 },
+  categoryTitle: { fontFamily: 'Alexandria_700Bold', fontSize: 14, textAlign: 'right' },
+  categorySub: { fontFamily: 'Alexandria_400Regular', fontSize: 9, textAlign: 'right' },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
   voteGrid: { gap: 9 },
-  progressRow: { flexDirection: 'row-reverse', justifyContent: 'center', gap: 6, marginBottom: 2 },
-  progressDot: { width: 8, height: 8, borderRadius: 5 },
+  playerProgress: { gap: 5, marginBottom: 3 },
+  progressLabels: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  track: { height: 5, borderRadius: 9, overflow: 'hidden' },
+  trackFill: { height: 5, borderRadius: 9 },
   nameTile: { minHeight: 74, borderWidth: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   secretBox: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 9, alignItems: 'center' },
   turnPair: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 7 },
 });
+
+function PhaseProgress({ active, colors }: { active: number; colors: ReturnType<typeof useColors> }) {
+  const names = ['التصنيف', 'الأدوار', 'التمرير', 'الأسئلة', 'التصويت', 'الكشف', 'التخمين', 'النتيجة'];
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel={`المرحلة ${active + 1} من ${names.length}: ${names[active]}`} style={styles.phaseWrap}>
+      <View style={styles.phaseTop}>
+        <Text style={[styles.small, { color: colors.mutedForeground }]}>تقدم الجولة</Text>
+        <Text style={[styles.phaseName, { color: colors.primary }]}>{names[active]}</Text>
+      </View>
+      <View style={styles.phaseTrack}>
+        {names.map((name, index) => (
+          <View
+            key={name}
+            style={[styles.phaseSegment, { backgroundColor: index <= active ? colors.primary : colors.border }]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}

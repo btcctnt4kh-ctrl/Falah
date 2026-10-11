@@ -1,8 +1,10 @@
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type Dispatch, type FormEvent, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
-import { ArrowRight, Check, ChevronLeft, CircleHelp, Home as HomeIcon, Pencil, Plus, RotateCcw, Sparkles, Trash2, Users, WandSparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, CircleHelp, Home as HomeIcon, MapPin, Pencil, Plus, RotateCcw, Sparkles, Trash2, Utensils, Users, Volume2, VolumeX, WandSparkles, Cat } from 'lucide-react';
 import Undercover from './Undercover';
+import { playTone } from './feedback';
 const STORE_KEY = 'filla-players-v1';
+const SOUND_KEY = 'filla-sound-enabled-v1';
 const defaultPlayers: string[] = [];
 
 const questionPool = [
@@ -86,6 +88,50 @@ const challengePool = [
   'احكِ ذكرى جميلة في جملة واحدة.',
 ];
 
+type QuestionSession = {
+  player: string;
+  question: (typeof questionPool)[number] | null;
+  seen: string[];
+  turn: number;
+};
+type ChallengeSession = {
+  player: string;
+  challenge: string;
+  seen: string[];
+  round: number;
+};
+
+function readQuestionSession(): QuestionSession {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem('filla-question-session-v1') || 'null');
+    if (value && typeof value === 'object') {
+      const state = value as Partial<QuestionSession>;
+      const questionIsValid = state.question === null || questionPool.some((question) => question.text === state.question?.text && question.category === state.question?.category);
+      if (typeof state.player === 'string' && questionIsValid && Array.isArray(state.seen) && state.seen.every((item) => typeof item === 'string') && Number.isInteger(state.turn) && (state.turn ?? 0) > 0) {
+        return state as QuestionSession;
+      }
+    }
+  } catch { /* Start with a fresh question session if storage is unavailable. */ }
+  return { player: '', question: null, seen: [], turn: 1 };
+}
+
+function readChallengeSession(): ChallengeSession {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem('filla-challenge-session-v1') || 'null');
+    if (value && typeof value === 'object') {
+      const state = value as Partial<ChallengeSession>;
+      if (typeof state.player === 'string' && typeof state.challenge === 'string' && (state.challenge === '' || challengePool.includes(state.challenge)) && Array.isArray(state.seen) && state.seen.every((item) => typeof item === 'string') && Number.isInteger(state.round) && (state.round ?? 0) > 0) {
+        return state as ChallengeSession;
+      }
+    }
+  } catch { /* Start with a fresh challenge session if storage is unavailable. */ }
+  return { player: '', challenge: '', seen: [], round: 1 };
+}
+
+function writeSession(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Keep the current round in memory if storage is unavailable. */ }
+}
+
 function secureIndex(length: number) {
   if (length < 2) return 0;
   const cryptoObject = globalThis.crypto;
@@ -98,22 +144,14 @@ function secureIndex(length: number) {
   return Math.floor(Math.random() * length);
 }
 
-function playTone(kind: 'tick' | 'land' | 'tap' = 'tap') {
-  try {
-    const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const context = new AudioContextClass();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = kind === 'land' ? 660 : kind === 'tick' ? 330 : 500;
-    gain.gain.setValueAtTime(.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(kind === 'land' ? .12 : .045, context.currentTime + .012);
-    gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + (kind === 'land' ? .32 : .09));
-    oscillator.connect(gain); gain.connect(context.destination);
-    oscillator.start(); oscillator.stop(context.currentTime + .34);
-    oscillator.onended = () => void context.close();
-  } catch { /* Audio is a pleasant enhancement, never a requirement. */ }
+function useSoundPreference() {
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem(SOUND_KEY) === 'on'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SOUND_KEY, enabled ? 'on' : 'off'); } catch { /* Sound remains optional. */ }
+  }, [enabled]);
+  return [enabled, setEnabled] as const;
 }
 
 function usePlayers() {
@@ -133,7 +171,7 @@ function usePlayers() {
   return [players, setPlayers] as const;
 }
 
-function Header() {
+function Header({ soundEnabled, onToggleSound }: { soundEnabled: boolean; onToggleSound: () => void }) {
   const [path] = useLocation();
   return <header className="topbar">
     <Link href="/" className="brand" data-testid="link-home-logo">
@@ -141,6 +179,9 @@ function Header() {
       <span><span className="brand-word">فِلّة</span><span className="brand-caption" style={{ display: 'block' }}>اللعب أحلى مع بعض</span></span>
     </Link>
     <nav className="nav-links" aria-label="التنقل الرئيسي">
+      <button className={`nav-link sound-toggle ${soundEnabled ? 'active' : ''}`} aria-label={soundEnabled ? 'إيقاف الأصوات' : 'تشغيل الأصوات'} aria-pressed={soundEnabled} onClick={onToggleSound} data-testid="button-toggle-sound">
+        {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}<span className="sound-label">{soundEnabled ? 'الصوت يعمل' : 'الصوت متوقف'}</span>
+      </button>
       <Link href="/" className={`nav-link ${path === '/' ? 'active' : ''}`} data-testid="link-nav-home"><HomeIcon size={16} />الرئيسية</Link>
       <Link href="/questions" className={`nav-link ${path === '/questions' ? 'active' : ''}`} data-testid="link-nav-questions"><CircleHelp size={16} />أسئلة</Link>
       <Link href="/challenges" className={`nav-link ${path === '/challenges' ? 'active' : ''}`} data-testid="link-nav-challenges"><Sparkles size={16} />تحديات</Link>
@@ -149,8 +190,8 @@ function Header() {
   </header>;
 }
 
-function Shell({ children }: { children: ReactNode }) {
-  return <div className="shell" dir="rtl"><div className="page"><Header />{children}<div className="footer-note" data-testid="text-footer">فِلّة · جلسة تجمعكم، وضحكة تبقى معكم</div></div></div>;
+function Shell({ children, soundEnabled, onToggleSound }: { children: ReactNode; soundEnabled: boolean; onToggleSound: () => void }) {
+  return <div className="shell" dir="rtl"><div className="page"><Header soundEnabled={soundEnabled} onToggleSound={onToggleSound} />{children}<div className="footer-note" data-testid="text-footer">فِلّة · جلسة تجمعكم، وضحكة تبقى معكم</div></div></div>;
 }
 
 function Home({ players, setPlayers }: { players: string[]; setPlayers: (players: string[]) => void }) {
@@ -210,33 +251,68 @@ function GameHeading({ title, subtitle, number }: { title: string; subtitle: str
 }
 
 function GameFrame({ title, subtitle, number, children }: { title: string; subtitle: string; number: string; children: ReactNode }) {
-  return <main className="main"><div className="game-header"><Link href="/" className="back-link" data-testid="link-back-home"><ArrowRight size={17} />للرئيسية</Link><GameHeading title={title} subtitle={subtitle} number={number} /><span style={{ width: 90 }} /></div>{children}</main>;
+  return <main className="main game-screen"><div className="game-header"><Link href="/" className="back-link" data-testid="link-back-home"><ArrowRight size={17} />للرئيسية</Link><GameHeading title={title} subtitle={subtitle} number={number} /><span className="header-spacer" /></div>{children}</main>;
 }
 
-function PlayerPicker({ players, onPicked, testPrefix }: { players: string[]; onPicked: (name: string) => void; testPrefix: string }) {
+function PlayerPicker({ players, onPicked, testPrefix, soundEnabled }: { players: string[]; onPicked: (name: string) => void; testPrefix: string; soundEnabled: boolean }) {
   const [rolling, setRolling] = useState(false);
   const [shown, setShown] = useState('');
+  const [upcoming, setUpcoming] = useState('');
+  const [reelMoving, setReelMoving] = useState(false);
+  const [reelDuration, setReelDuration] = useState(190);
+  const [landed, setLanded] = useState(false);
   const timerRef = useRef<number | null>(null);
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
   function roll() {
     if (rolling || players.length < 2) return;
-    setRolling(true); let ticks = 0; const finalIndex = secureIndex(players.length); let lastIndex = -1;
+    setRolling(true);
+    setLanded(false);
+    let ticks = 0;
+    const finalIndex = secureIndex(players.length);
+    let lastIndex = -1;
     const tick = () => {
-      let next = secureIndex(players.length);
-      if (players.length > 1 && next === lastIndex) next = (next + 1) % players.length;
-      lastIndex = next; setShown(players[next]); playTone('tick'); ticks += 1;
-      if (ticks >= 20) {
-        const winner = players[finalIndex]; setShown(winner); setRolling(false); playTone('land'); onPicked(winner); return;
-      }
-      timerRef.current = window.setTimeout(tick, 48 + ticks * 11);
+      const isLastTick = ticks >= 14;
+      let next = isLastTick ? finalIndex : secureIndex(players.length);
+      if (!isLastTick && next === lastIndex) next = (next + 1) % players.length;
+      lastIndex = next;
+      const duration = isLastTick ? 360 : 88 + ticks * 9;
+      setUpcoming(players[next]);
+      setReelDuration(duration);
+      setReelMoving(true);
+      playTone('tick', soundEnabled);
+      timerRef.current = window.setTimeout(() => {
+        setShown(players[next]);
+        setUpcoming('');
+        setReelMoving(false);
+        ticks += 1;
+        if (isLastTick) {
+          const winner = players[finalIndex];
+          setRolling(false);
+          setLanded(true);
+          playTone('land', soundEnabled);
+          if ('vibrate' in navigator) navigator.vibrate?.(18);
+          timerRef.current = window.setTimeout(() => onPicked(winner), 460);
+          return;
+        }
+        timerRef.current = window.setTimeout(tick, 35 + ticks * 8);
+      }, duration);
     };
+    setShown(players[secureIndex(players.length)]);
     tick();
   }
-  return <div className="game-panel" data-testid={`${testPrefix}-picker`}>
-    <div className="panel-label">مين عليه الدور؟</div>
-    <div className="player-slot" aria-live="polite"><span className={`slot-name ${rolling ? 'is-rolling' : ''}`} data-testid={`${testPrefix}-selected-player`}>{shown || 'اسم اللاعب يظهر هنا'}</span></div>
-    <p className="panel-instruction">{rolling ? 'لحظة... فِلّة تختار!' : 'خلّوا فِلّة تختار لاعباً عشوائياً'}</p>
-    <button className="btn btn-primary" onClick={roll} disabled={rolling || players.length < 2} data-testid={`${testPrefix}-button-roll`}><Sparkles size={16} />اختيار اللاعب</button>
+  return <div className="game-panel game-stage-card picker-screen" data-testid={`${testPrefix}-picker`}>
+    <div className="game-stage-top"><div className="panel-label">مين عليه الدور؟</div><p className="panel-instruction">{rolling ? 'لحظة... فِلّة تختار!' : 'خلّوا فِلّة تختار لاعباً عشوائياً'}</p></div>
+    <div className="picker-center">
+      <div className={`player-slot reel-slot ${landed ? 'landed' : ''}`} aria-live="polite" aria-atomic="true">
+        <div className={`reel-track ${reelMoving ? 'is-moving' : ''}`} style={{ transitionDuration: `${reelDuration}ms` }} data-testid={`${testPrefix}-reel-track`}>
+          <span className={`slot-name ${rolling ? 'is-rolling' : ''}`} data-testid={`${testPrefix}-selected-player`}>{shown || 'خلّوا فِلّة تختار لاعباً'}</span>
+          <span className="slot-name reel-next" aria-hidden="true">{upcoming || ' '}</span>
+        </div>
+      </div>
+    </div>
+    <div className="game-actions-bottom">
+      <button className="btn btn-primary" onClick={roll} disabled={rolling || players.length < 2} data-testid={`${testPrefix}-button-roll`}><Sparkles size={17} />{landed ? 'اختيار جديد' : 'اختيار لاعب'}</button>
+    </div>
   </div>;
 }
 
@@ -244,42 +320,39 @@ function PlayerRequirement({ players }: { players: string[] }) {
   return <div className="game-panel" data-testid="state-needs-players"><div className="game-icon" style={{ margin: '0 auto 16px' }}><Users size={22} /></div><h2 style={{ fontSize: 20, marginBottom: 8 }}>{players.length === 0 ? 'الجلسة فاضية!' : 'نحتاج لاعباً إضافياً'}</h2><p className="secret-muted">أضيفوا اسمين على الأقل عشان تبدأ اللعبة. أسماءكم محفوظة على الجهاز.</p><Link href="/" className="btn btn-primary" data-testid="link-add-players"><ArrowRight size={16} />إضافة اللاعبين</Link></div>;
 }
 
-function Questions({ players }: { players: string[] }) {
-  const [player, setPlayer] = useState('');
-  const [question, setQuestion] = useState<(typeof questionPool)[number] | null>(null);
-  const [seen, setSeen] = useState<string[]>([]);
-  const [turn, setTurn] = useState(1);
+function Questions({ players, soundEnabled, session, setSession }: { players: string[]; soundEnabled: boolean; session: QuestionSession; setSession: Dispatch<SetStateAction<QuestionSession>> }) {
   function nextQuestion() {
-    const candidates = questionPool.filter((item) => !seen.includes(item.text));
+    const candidates = questionPool.filter((item) => !session.seen.includes(item.text));
     const pool = candidates.length ? candidates : questionPool;
     const selected = pool[secureIndex(pool.length)];
-    setQuestion(selected); setSeen((old) => [...(candidates.length ? old : []), selected.text]); playTone('tap');
+    setSession((old) => ({ ...old, question: selected, seen: [...(candidates.length ? old.seen : []), selected.text] }));
+    playTone('tap', soundEnabled);
   }
-  function selectPlayer(name: string) { setPlayer(name); nextQuestion(); }
+  function selectPlayer(name: string) { setSession((old) => ({ ...old, player: name })); nextQuestion(); }
   return <GameFrame title="سؤال على الطاير" subtitle="سؤال واحد يفتح حكاية كاملة." number="١">
-    {players.length < 2 ? <PlayerRequirement players={players} /> : !player ? <PlayerPicker players={players} onPicked={selectPlayer} testPrefix="questions" /> :
-      <div className="game-panel" data-testid="questions-turn">
-        <div className="panel-label">الجولة {turn}</div><div className="player-slot" style={{ height: 61 }}><span className="slot-name" data-testid="questions-current-player">{player}</span></div>
-        {question && <><div className="question-card" aria-live="polite" data-testid="questions-content"><div className="question-category">{question.category}</div><p className="question-text">{question.text}</p></div><div className="action-row"><button className="btn btn-primary" onClick={() => { setPlayer(''); setQuestion(null); setTurn((old) => old + 1); }} data-testid="questions-button-answered"><Check size={16} />جاوبنا، التالي</button><button className="btn btn-soft" onClick={nextQuestion} data-testid="questions-button-skip"><RotateCcw size={16} />تخطّي السؤال</button></div><p className="panel-instruction" style={{ margin: '15px 0 0' }}>التخطّي يبدّل السؤال ويبقي الدور مع {player}.</p></>}
+    {players.length < 2 ? <PlayerRequirement players={players} /> : !session.player ? <PlayerPicker players={players} onPicked={selectPlayer} testPrefix="questions" soundEnabled={soundEnabled} /> :
+      <div className="game-panel game-stage-card prompt-screen" data-testid="questions-turn" key={`${session.turn}-${session.player}`}>
+        <div className="game-stage-top"><div className="panel-label">الجولة {session.turn}</div><div className="player-slot current-player-slot"><span className="slot-name" data-testid="questions-current-player">{session.player}</span></div></div>
+        {session.question && <div className="question-card prompt-center" aria-live="polite" data-testid="questions-content"><div className="question-category">{session.question.category}</div><p className="question-text">{session.question.text}</p></div>}
+        {session.question && <div className="game-actions-bottom"><div className="action-row"><button className="btn btn-primary" onClick={() => setSession((old) => ({ ...old, player: '', question: null, turn: old.turn + 1 }))} data-testid="questions-button-answered"><Check size={16} />جاوبنا، التالي</button><button className="btn btn-soft" onClick={nextQuestion} data-testid="questions-button-skip"><RotateCcw size={16} />تخطّي السؤال</button></div><p className="panel-instruction">التخطّي يبدّل السؤال ويبقي الدور مع {session.player}.</p></div>}
       </div>}
   </GameFrame>;
 }
 
-function Challenges({ players }: { players: string[] }) {
-  const [player, setPlayer] = useState('');
-  const [challenge, setChallenge] = useState('');
-  const [seen, setSeen] = useState<string[]>([]);
-  const [round, setRound] = useState(1);
+function Challenges({ players, soundEnabled, session, setSession }: { players: string[]; soundEnabled: boolean; session: ChallengeSession; setSession: Dispatch<SetStateAction<ChallengeSession>> }) {
   function nextChallenge() {
-    const alternatives = challengePool.filter((item) => !seen.includes(item));
+    const alternatives = challengePool.filter((item) => !session.seen.includes(item));
     const pool = alternatives.length ? alternatives : challengePool;
-    const next = pool[secureIndex(pool.length)]; setChallenge(next); setSeen((old) => [...(alternatives.length ? old : []), next]); playTone('tap');
+    const next = pool[secureIndex(pool.length)];
+    setSession((old) => ({ ...old, challenge: next, seen: [...(alternatives.length ? old.seen : []), next] }));
+    playTone('tap', soundEnabled);
   }
-  function selectPlayer(name: string) { setPlayer(name); nextChallenge(); }
+  function selectPlayer(name: string) { setSession((old) => ({ ...old, player: name })); nextChallenge(); }
   return <GameFrame title="تحديات لطيفة" subtitle="كلها خفيفة، والهدف ننبسط سوا." number="٢">
-    {players.length < 2 ? <PlayerRequirement players={players} /> : !player ? <PlayerPicker players={players} onPicked={selectPlayer} testPrefix="challenges" /> :
-      <div className="game-panel" data-testid="challenges-turn"><div className="panel-label">التحدي {round}</div><div className="player-slot" style={{ height: 61 }}><span className="slot-name" data-testid="challenges-current-player">{player}</span></div>
-        {challenge && <><div className="question-card" aria-live="polite" data-testid="challenges-content"><div className="question-category">على راحتك · تحدٍ آمن</div><p className="question-text">{challenge}</p></div><div className="action-row"><button className="btn btn-primary" onClick={() => { setPlayer(''); setChallenge(''); setRound((old) => old + 1); }} data-testid="challenges-button-done"><Check size={16} />تم، التالي</button><button className="btn btn-soft" onClick={nextChallenge} data-testid="challenges-button-another"><RotateCcw size={16} />تحدٍ آخر</button></div><p className="panel-instruction" style={{ margin: '15px 0 0' }}>التحدي الآخر يبقى مع {player}.</p></>}
+    {players.length < 2 ? <PlayerRequirement players={players} /> : !session.player ? <PlayerPicker players={players} onPicked={selectPlayer} testPrefix="challenges" soundEnabled={soundEnabled} /> :
+      <div className="game-panel game-stage-card prompt-screen" data-testid="challenges-turn" key={`${session.round}-${session.player}`}><div className="game-stage-top"><div className="panel-label">التحدي {session.round}</div><div className="player-slot current-player-slot"><span className="slot-name" data-testid="challenges-current-player">{session.player}</span></div></div>
+        {session.challenge && <div className="question-card prompt-center" aria-live="polite" data-testid="challenges-content"><div className="question-category">على راحتك · تحدٍ آمن</div><p className="question-text">{session.challenge}</p></div>}
+        {session.challenge && <div className="game-actions-bottom"><div className="action-row"><button className="btn btn-primary" onClick={() => setSession((old) => ({ ...old, player: '', challenge: '', round: old.round + 1 }))} data-testid="challenges-button-done"><Check size={16} />تم، التالي</button><button className="btn btn-soft" onClick={nextChallenge} data-testid="challenges-button-another"><RotateCcw size={16} />تحدٍ آخر</button></div><p className="panel-instruction">التحدي الآخر يبقى مع {session.player}.</p></div>}
       </div>}
   </GameFrame>;
 }
@@ -290,14 +363,19 @@ function NotFound() {
 
 function App() {
   const [players, setPlayers] = usePlayers();
+  const [soundEnabled, setSoundEnabled] = useSoundPreference();
+  const [questionSession, setQuestionSession] = useState(readQuestionSession);
+  const [challengeSession, setChallengeSession] = useState(readChallengeSession);
   useEffect(() => {
     if ('serviceWorker' in navigator && import.meta.env.PROD) void navigator.serviceWorker.register('/sw.js').catch(() => undefined);
   }, []);
-  return <Shell><Switch>
+  useEffect(() => { writeSession('filla-question-session-v1', questionSession); }, [questionSession]);
+  useEffect(() => { writeSession('filla-challenge-session-v1', challengeSession); }, [challengeSession]);
+  return <Shell soundEnabled={soundEnabled} onToggleSound={() => setSoundEnabled((enabled) => !enabled)}><Switch>
     <Route path="/"><Home players={players} setPlayers={setPlayers} /></Route>
-    <Route path="/questions"><Questions players={players} /></Route>
-    <Route path="/challenges"><Challenges players={players} /></Route>
-    <Route path="/undercover"><Undercover players={players} /></Route>
+    <Route path="/questions"><Questions players={players} soundEnabled={soundEnabled} session={questionSession} setSession={setQuestionSession} /></Route>
+    <Route path="/challenges"><Challenges players={players} soundEnabled={soundEnabled} session={challengeSession} setSession={setChallengeSession} /></Route>
+    <Route path="/undercover"><Undercover players={players} soundEnabled={soundEnabled} /></Route>
     <Route><NotFound /></Route>
   </Switch></Shell>;
 }
